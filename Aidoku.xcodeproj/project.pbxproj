@@ -113,6 +113,7 @@
 		FB14B1322DF4D36A0067E4D4 /* NotificationName.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB8E48E02DC15DCD002A3621 /* NotificationName.swift */; };
 		FB14B1332DF4D4CD0067E4D4 /* PageInterceptorProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF8C5852DCD02020066F53D /* PageInterceptorProcessor.swift */; };
 		FB14B1352DF4D4E70067E4D4 /* Nuke in Frameworks */ = {isa = PBXBuildFile; productRef = FB14B1342DF4D4E70067E4D4 /* Nuke */; };
+		FC3FBED1D1275D7880F29C05 /* NukeUI in Frameworks (macOS) */ = {isa = PBXBuildFile; productRef = FB17114A296770CC00AD523D /* NukeUI */; };
 		FB17005D2E39313C00DBC4E4 /* MangaViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB17005C2E39313700DBC4E4 /* MangaViewController.swift */; };
 		FB17114329653B3E00AD523D /* AddToCategoryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB17114229653B3E00AD523D /* AddToCategoryViewController.swift */; };
 		FB1711482967444B00AD523D /* MigrateMangaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB1711472967444B00AD523D /* MigrateMangaView.swift */; };
@@ -1114,6 +1115,7 @@
 			files = (
 				FB6340C9279246D50072A2A2 /* ZIPFoundation in Frameworks */,
 				FB14B1352DF4D4E70067E4D4 /* Nuke in Frameworks */,
+				FC3FBED1D1275D7880F29C05 /* NukeUI in Frameworks (macOS) */,
 				FBFDF5FA2DF799340064F603 /* AidokuRunner in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -2395,6 +2397,7 @@
 			packageProductDependencies = (
 				FB6340C8279246D50072A2A2 /* ZIPFoundation */,
 				FB14B1342DF4D4E70067E4D4 /* Nuke */,
+				FB17114A296770CC00AD523D /* NukeUI */,
 				FBFDF5F92DF799340064F603 /* AidokuRunner */,
 			);
 			productName = "Aidoku (macOS)";
