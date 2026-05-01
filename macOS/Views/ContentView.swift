@@ -15,6 +15,7 @@ struct ContentView: View {
         } detail: {
             if let source = selectedSource {
                 SourceBrowseView(source: source)
+                    .id(source.key)
             } else {
                 Text("Select a source to browse")
                     .foregroundStyle(.secondary)

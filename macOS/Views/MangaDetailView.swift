@@ -19,6 +19,8 @@ struct MangaDetailView: View {
 
     @State private var selectedChapter: AidokuRunner.Chapter?
     @State private var isShowingReader = false
+    @State private var isInLibrary = false
+    @State private var isSubscribing = false
 
     var displayManga: AidokuRunner.Manga { detailedManga ?? manga }
 
@@ -45,6 +47,25 @@ struct MangaDetailView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
+
+                    Button {
+                        Task { await toggleLibrary() }
+                    } label: {
+                        if isSubscribing {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                                .frame(maxWidth: .infinity, minHeight: 28)
+                        } else {
+                            Label(
+                                isInLibrary ? "In Library" : "Add to Library",
+                                systemImage: isInLibrary ? "checkmark" : "plus"
+                            )
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(isInLibrary ? .secondary : .accentColor)
+                    .disabled(isSubscribing)
 
                     Spacer()
                 }
@@ -132,7 +153,30 @@ struct MangaDetailView: View {
             }
         }
         .task {
+            isInLibrary = CoreDataManager.shared.hasLibraryManga(
+                sourceId: source.key,
+                mangaId: manga.key
+            )
             await loadDetails()
+        }
+    }
+
+    private func toggleLibrary() async {
+        if isInLibrary {
+            isInLibrary = false
+            await MangaManager.shared.removeFromLibrary(
+                sourceId: source.key,
+                mangaId: displayManga.key
+            )
+        } else {
+            isSubscribing = true
+            await MangaManager.shared.addToLibrary(
+                sourceId: source.key,
+                manga: displayManga,
+                chapters: chapters
+            )
+            isSubscribing = false
+            isInLibrary = true
         }
     }
 
