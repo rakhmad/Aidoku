@@ -2,7 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>ICLOUD_CONTAINER_ID</key>
-	<string>$(ICLOUD_CONTAINER_ID)</string>
+    <key>ICLOUD_CONTAINER_ID</key>
+    <string>$(ICLOUD_CONTAINER_ID)</string>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+    </dict>
 </dict>
 </plist>
