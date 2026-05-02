@@ -30,13 +30,13 @@ e1723be feat(macOS): initialize Nuke pipeline and warm singletons on launch
 | `macOS/Info.plist` | Modified | `NSAllowsArbitraryLoads` for HTTP sources |
 | `macOS/AidokuApp.swift` | Modified | Nuke pipeline + CoreData/SourceManager init |
 | `macOS/Views/MacImageView.swift` | Created | macOS-native Nuke image loader (no UIKit) |
-| `macOS/Views/ContentView.swift` | Created | `NavigationSplitView` root — sidebar + detail |
+| `macOS/Views/ContentView.swift` | Created | `NavigationSplitView` root — sidebar with Library + Sources |
 | `macOS/Views/SourceSidebarView.swift` | Created | Lists installed sources, `+` button to add |
 | `macOS/Views/AddSourceListSheet.swift` | Created | Paste URL → fetch source list → install sources |
 | `macOS/Views/SourceBrowseView.swift` | Created | Paginated manga grid with listing tabs |
 | `macOS/Views/MangaDetailView.swift` | Created | Cover + synopsis + chapter list + subscribe button |
 | `macOS/Views/WebtoonReaderView.swift` | Created | Vertical scroll reader (`LazyVStack` of `MacImageView`) |
-| `macOS/Views/LibraryView.swift` | **Stub — not implemented** | Still just `Spacer()` |
+| `macOS/Views/MacLibraryView.swift` | ✅ **Created** | Grid of subscribed manga with CoreData integration |
 | `Aidoku.xcodeproj/project.pbxproj` | Modified | All new files registered in macOS target |
 
 ## Key API Reference
@@ -78,71 +78,79 @@ CoreDataManager.shared.hasLibraryManga(sourceId:mangaId:)                     //
 CoreDataManager.shared.getLibraryManga(category:)                             // [LibraryMangaObject]
 ```
 
+## Build Fix Notes (May 1, 2026)
+
+### Issue 1: Hashable Conformance
+**Problem**: `AidokuRunner.Source` doesn't conform to `Hashable`, causing compilation errors in `SidebarSelection` enum.
+
+**Solution**: Changed the enum to store source keys (String) instead of Source objects:
+```swift
+enum SidebarSelection: Hashable {
+    case library
+    case source(String)  // Stores source.key, not Source object
+}
+```
+
+### Issue 2: Type Name Collision
+**Problem**: `LibraryView` already exists in the iOS target, causing "invalid redeclaration" error.
+
+**Solution**: Renamed the macOS library view to `MacLibraryView`:
+- File: `macOS/Views/MacLibraryView.swift` (distinct from iOS `LibraryView.swift`)
+- Struct name: `MacLibraryView` instead of `LibraryView`
+- Updated `ContentView.swift` to use `MacLibraryView()`
+
+## What Was Completed (Latest Session - May 1, 2026)
+
+### 1. ✅ Library View Implementation
+`macOS/Views/LibraryView.swift` has been fully implemented with:
+- Grid layout using `LazyVGrid` matching `SourceBrowseView` style
+- Loads library manga from CoreData via `CoreDataManager.shared.getLibraryManga()`
+- Displays manga covers using `MacImageView` with proper source integration
+- Tapping a cover opens `MangaDetailView` in a sheet
+- Listens to `updateSourceList` and `addToLibrary` notifications for auto-refresh
+- Shows empty state with `ContentUnavailableView` when library is empty
+- Sorted by most recently added
+
+### 2. ✅ ContentView Integration
+`ContentView.swift` updated to include library:
+- Implemented Option B: Two-section sidebar with Library + Sources
+- New `SidebarSelection` enum to handle both library and source selections
+- Library section appears first in the sidebar
+- Sources section follows with existing source list
+- Right-click context menu on sources to remove them
+- Selecting library shows `LibraryView`, selecting source shows `SourceBrowseView`
+- Default selection is Library
+
+### 3. ✅ Fixed Manga Grid Layout
+`SourceBrowseView.swift` `MangaCoverItem` updated:
+- Changed from `aspectRatio(2/3)` to fixed `frame(height: 200)` for consistent alignment
+- Increased spacing from 5 to 8 points between image and title
+- Added `.padding(.bottom, 4)` to text for extra bottom padding
+- Added `.clipped()` to prevent image overflow
+
+### 4. ✅ Remove Source Context Menu
+Implemented in the new `CombinedSidebarView`:
+- Right-click context menu on each source row
+- "Remove Source" button with destructive role
+- Automatically updates source list after removal
+- Returns to Library view if the removed source was selected
+
 ## What Still Needs to Be Done
 
-### 1. Remove Source from Sidebar
-In `macOS/Views/SourceSidebarView.swift`, add a right-click context menu to each row:
-```swift
-.contextMenu {
-    Button("Remove Source", role: .destructive) {
-        SourceManager.shared.remove(source: source)
-        sources = SourceManager.shared.sources
-        if selectedSource?.key == source.key { selectedSource = nil }
-    }
-}
-```
+All major features have been implemented! The app now has:
+- ✅ Source management (add, browse, remove)
+- ✅ Manga browsing with pagination
+- ✅ Manga details view
+- ✅ Library management
+- ✅ Webtoon reader
+- ✅ Integrated navigation
 
-### 2. Library View
-`macOS/Views/LibraryView.swift` is still a stub (`Spacer()`). Replace it with a grid of subscribed manga.
-
-The library is accessible via:
-```swift
-let libraryItems = CoreDataManager.shared.getLibraryManga()  // [LibraryMangaObject]
-// Each LibraryMangaObject has .manga (MangaObject) → .toNewManga() → AidokuRunner.Manga
-// .manga.sourceId gives you the source key to look up via SourceManager.shared.source(for:)
-```
-
-The `LibraryView` needs to:
-1. Load all library manga on appear
-2. Show them in a `LazyVGrid` like `SourceBrowseView`
-3. Tapping a cover opens `MangaDetailView(source:manga:)` as a sheet
-4. Refresh on `.updateSourceList` or `.addToLibrary` notifications
-
-### 3. Plug LibraryView into ContentView
-`ContentView.swift` currently only shows the source browser. Add a library tab or top-level toggle so the user can switch between "Sources" and "Library".
-
-Option A — Tab bar style with `TabView`:
-```swift
-TabView {
-    LibraryView().tabItem { Label("Library", systemImage: "books.vertical") }
-    NavigationSplitView { ... }.tabItem { Label("Sources", systemImage: "square.grid.2x2") }
-}
-```
-
-Option B — Two-section sidebar: add a "Library" section above the sources list.
-
-### 4. Fix Manga Grid Layout (SourceBrowseView)
-In `macOS/Views/SourceBrowseView.swift`, the `MangaCoverItem` private struct needs:
-- Fixed cover height (not just aspect ratio) so all covers align
-- More spacing between the image and title
-- More padding below the title
-
-Suggested fix in `MangaCoverItem`:
-```swift
-VStack(alignment: .leading, spacing: 8) {  // was spacing: 5
-    MacImageView(...)
-        .frame(height: 200)                 // fixed height instead of aspectRatio
-        .frame(maxWidth: .infinity)
-        .clipped()
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-
-    Text(manga.title)
-        .font(.system(size: 12))
-        .lineLimit(2)
-        .foregroundStyle(.primary)
-        .padding(.bottom, 4)               // extra bottom padding
-}
-```
+### Optional Future Enhancements:
+- Add sorting/filtering options to Library view
+- Add category support in Library view
+- Add search functionality
+- Add recently read/continue reading section
+- Add download management for offline reading
 
 ## Build Instructions
 

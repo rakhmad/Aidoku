@@ -28,6 +28,7 @@ struct MacImageView: View {
             } else {
                 Rectangle()
                     .fill(Color.secondary.opacity(0.15))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .onAppear {

@@ -9,6 +9,7 @@ import SwiftUI
 struct SourceBrowseView: View {
     let source: AidokuRunner.Source
 
+    @State private var listings: [AidokuRunner.Listing] = []
     @State private var selectedListing: AidokuRunner.Listing?
     @State private var entries: [AidokuRunner.Manga] = []
     @State private var isLoading = false
@@ -17,14 +18,16 @@ struct SourceBrowseView: View {
     @State private var loadError: Error?
     @State private var selectedManga: AidokuRunner.Manga?
     @State private var isShowingDetail = false
+    @State private var searchText = ""
+    @State private var isSearching = false
 
     private let columns = [GridItem(.adaptive(minimum: 140, maximum: 180), spacing: 12)]
 
     var body: some View {
         VStack(spacing: 0) {
-            if !source.listings.isEmpty {
+            if !listings.isEmpty && !isSearching {
                 Picker("Listing", selection: $selectedListing) {
-                    ForEach(source.listings, id: \.id) { listing in
+                    ForEach(listings, id: \.id) { listing in
                         Text(listing.name).tag(Optional(listing))
                     }
                 }
@@ -82,35 +85,51 @@ struct SourceBrowseView: View {
             }
         }
         .navigationTitle(source.name)
+        .searchable(text: $searchText, placement: .toolbar, prompt: "Search \(source.name)…")
+        .onSubmit(of: .search) {
+            Task { await load(initial: true) }
+        }
+        .onChange(of: searchText) { newValue in
+            if newValue.isEmpty {
+                isSearching = false
+                Task { await load(initial: true) }
+            }
+        }
         .sheet(isPresented: $isShowingDetail) {
             if let manga = selectedManga {
                 MangaDetailView(source: source, manga: manga)
             }
         }
         .task {
-            selectedListing = source.listings.first
+            listings = (try? await source.getListings()) ?? []
+            selectedListing = listings.first
             await load(initial: true)
         }
         .onChange(of: selectedListing) { _ in
-            Task { await load(initial: true) }
+            if !isSearching { Task { await load(initial: true) } }
         }
     }
 
     private func load(initial: Bool) async {
+        let query = searchText.trimmingCharacters(in: .whitespaces)
+        let searching = !query.isEmpty
         if initial {
             page = 1
             entries = []
             loadError = nil
+            isSearching = searching
         }
         guard !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
         do {
-            let result: MangaPageResult
-            if let listing = selectedListing {
+            let result: AidokuRunner.MangaPageResult
+            if searching {
+                result = try await source.getSearchMangaList(query: query, page: page, filters: [])
+            } else if let listing = selectedListing {
                 result = try await source.getMangaList(listing: listing, page: page)
             } else {
-                result = try await source.getMangaList(filters: [], page: page)
+                result = try await source.getSearchMangaList(query: nil, page: page, filters: [])
             }
             hasMore = result.hasNextPage
             entries = initial ? result.entries : entries + result.entries
@@ -126,13 +145,15 @@ private struct MangaCoverItem: View {
     let manga: AidokuRunner.Manga
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 8) {
             MacImageView(
                 source: source,
                 imageUrl: manga.cover ?? "",
                 contentMode: .fill
             )
-            .aspectRatio(2/3, contentMode: .fill)
+            .frame(height: 200)
+            .frame(maxWidth: .infinity)
+            .clipped()
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
@@ -143,6 +164,7 @@ private struct MangaCoverItem: View {
                 .font(.system(size: 12))
                 .lineLimit(2)
                 .foregroundStyle(.primary)
+                .padding(.bottom, 4)
         }
     }
 }
